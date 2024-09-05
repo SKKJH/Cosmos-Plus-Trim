@@ -69,6 +69,7 @@
 #define REQ_CODE_FLUSH				0x0F
 #define REQ_CODE_RxDMA				0x10
 #define REQ_CODE_TxDMA				0x20
+#define REQ_CODE_DSM				0x30
 
 #define REQ_CODE_OCSSD_PHY_TYPE_BASE	0xA0
 #define REQ_CODE_OCSSD_PHY_WRITE		0xA0
@@ -157,7 +158,11 @@ typedef struct _SSD_REQ_FORMAT
 	unsigned int reqCode : 8;
 	unsigned int nvmeCmdSlotTag : 16;
 
-	unsigned int logicalSliceAddr;
+	unsigned int logicalSliceAddr : 28;
+	unsigned int blk0 : 1;
+	unsigned int blk1 : 1;
+	unsigned int blk2 : 1;
+	unsigned int blk3 : 1;
 
 	REQ_OPTION reqOpt;
 	DATA_BUF_INFO dataBufInfo;

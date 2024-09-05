@@ -93,7 +93,16 @@ void InitSliceMap()
 	for(sliceAddr=0; sliceAddr<SLICES_PER_SSD ; sliceAddr++)
 	{
 		logicalSliceMapPtr->logicalSlice[sliceAddr].virtualSliceAddr = VSA_NONE;
+		logicalSliceMapPtr->logicalSlice[sliceAddr].blk0 = 0;
+		logicalSliceMapPtr->logicalSlice[sliceAddr].blk1 = 0;
+		logicalSliceMapPtr->logicalSlice[sliceAddr].blk2 = 0;
+		logicalSliceMapPtr->logicalSlice[sliceAddr].blk3 = 0;
+
 		virtualSliceMapPtr->virtualSlice[sliceAddr].logicalSliceAddr = LSA_NONE;
+		virtualSliceMapPtr->virtualSlice[sliceAddr].blk0 = 0;
+		virtualSliceMapPtr->virtualSlice[sliceAddr].blk1 = 0;
+		virtualSliceMapPtr->virtualSlice[sliceAddr].blk2 = 0;
+		virtualSliceMapPtr->virtualSlice[sliceAddr].blk3 = 0;
 	}
 }
 
@@ -638,9 +647,15 @@ unsigned int AddrTransRead(unsigned int logicalSliceAddr)
 		assert(!"[WARNING] Logical address is larger than maximum logical address served by SSD [WARNING]");
 }
 
-unsigned int AddrTransWrite(unsigned int logicalSliceAddr)
+unsigned int AddrTransWrite(unsigned int dataBufEntry)
 {
-	unsigned int virtualSliceAddr;
+	unsigned int logicalSliceAddr, virtualSliceAddr, blk0, blk1, blk2, blk3;
+
+	logicalSliceAddr = dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr;
+	blk0 = dataBufMapPtr->dataBuf[dataBufEntry].blk0;
+	blk1 = dataBufMapPtr->dataBuf[dataBufEntry].blk1;
+	blk2 = dataBufMapPtr->dataBuf[dataBufEntry].blk2;
+	blk3 = dataBufMapPtr->dataBuf[dataBufEntry].blk3;
 
 	if(logicalSliceAddr < SLICES_PER_SSD)
 	{
@@ -649,7 +664,16 @@ unsigned int AddrTransWrite(unsigned int logicalSliceAddr)
 		virtualSliceAddr = FindFreeVirtualSlice();
 
 		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr = virtualSliceAddr;
+		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk0 = blk0;
+		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk1 = blk1;
+		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk2 = blk2;
+		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk3 = blk3;
+
 		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = logicalSliceAddr;
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].blk0 = blk0;
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].blk1 = blk1;
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].blk2 = blk2;
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].blk3 = blk3;
 
 		return virtualSliceAddr;
 	}
@@ -770,6 +794,10 @@ void InvalidateOldVsa(unsigned int logicalSliceAddr)
 		SelectiveGetFromGcVictimList(dieNo, blockNo);
 		virtualBlockMapPtr->block[dieNo][blockNo].invalidSliceCnt++;
 		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr = VSA_NONE;
+		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk0 = 0;
+		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk1 = 0;
+		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk2 = 0;
+		logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk3 = 0;
 
 		PutToGcVictimList(dieNo, blockNo, virtualBlockMapPtr->block[dieNo][blockNo].invalidSliceCnt);
 	}
@@ -806,6 +834,10 @@ void EraseBlock(unsigned int dieNo, unsigned int blockNo)
 	{
 		virtualSliceAddr = Vorg2VsaTranslation(dieNo, blockNo, pageNo);
 		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].logicalSliceAddr = LSA_NONE;
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].blk0 = 0;
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].blk1 = 0;
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].blk2 = 0;
+		virtualSliceMapPtr->virtualSlice[virtualSliceAddr].blk3 = 0;
 	}
 }
 

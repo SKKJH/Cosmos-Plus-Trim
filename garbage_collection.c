@@ -70,7 +70,7 @@ void InitGcVictimMap()
 
 void GarbageCollection(unsigned int dieNo)
 {
-	unsigned int victimBlockNo, pageNo, virtualSliceAddr, logicalSliceAddr, dieNoForGcCopy, reqSlotTag;
+	unsigned int victimBlockNo, pageNo, virtualSliceAddr, logicalSliceAddr, dieNoForGcCopy, reqSlotTag, blk0, blk1, blk2, blk3;
 
 	victimBlockNo = GetFromGcVictimList(dieNo);
 	dieNoForGcCopy = dieNo;
@@ -85,6 +85,11 @@ void GarbageCollection(unsigned int dieNo)
 			if(logicalSliceAddr != LSA_NONE)
 				if(logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr ==  virtualSliceAddr) //valid data
 				{
+					blk0 = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk0;
+					blk1 = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk1;
+					blk2 = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk2;
+					blk3 = logicalSliceMapPtr->logicalSlice[logicalSliceAddr].blk3;
+
 					//read
 					reqSlotTag = GetFromFreeReqQ();
 
@@ -121,6 +126,10 @@ void GarbageCollection(unsigned int dieNo)
 
 					logicalSliceMapPtr->logicalSlice[logicalSliceAddr].virtualSliceAddr = reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr;
 					virtualSliceMapPtr->virtualSlice[reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr].logicalSliceAddr = logicalSliceAddr;
+					virtualSliceMapPtr->virtualSlice[reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr].blk0 = blk0;
+					virtualSliceMapPtr->virtualSlice[reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr].blk1 = blk1;
+					virtualSliceMapPtr->virtualSlice[reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr].blk2 = blk2;
+					virtualSliceMapPtr->virtualSlice[reqPoolPtr->reqPool[reqSlotTag].nandInfo.virtualSliceAddr].blk3 = blk3;
 
 					SelectLowLevelReqQ(reqSlotTag);
 				}

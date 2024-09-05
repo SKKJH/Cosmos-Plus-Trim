@@ -69,6 +69,10 @@ void InitDataBuf()
 		dataBufMapPtr->dataBuf[bufEntry].nextEntry = bufEntry+1;
 		dataBufMapPtr->dataBuf[bufEntry].dirty = DATA_BUF_CLEAN;
 		dataBufMapPtr->dataBuf[bufEntry].blockingReqTail =  REQ_SLOT_TAG_NONE;
+		dataBufMapPtr->dataBuf[bufEntry].blk0 =  0;
+		dataBufMapPtr->dataBuf[bufEntry].blk1 =  0;
+		dataBufMapPtr->dataBuf[bufEntry].blk2 =  0;
+		dataBufMapPtr->dataBuf[bufEntry].blk3 =  0;
 
 		dataBufHashTablePtr->dataBufHash[bufEntry].headEntry = DATA_BUF_NONE;
 		dataBufHashTablePtr->dataBufHash[bufEntry].tailEntry = DATA_BUF_NONE;
@@ -90,6 +94,61 @@ unsigned int CheckDataBufHit(unsigned int reqSlotTag)
 	unsigned int bufEntry, logicalSliceAddr;
 
 	logicalSliceAddr = reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr;
+	bufEntry = dataBufHashTablePtr->dataBufHash[FindDataBufHashTableEntry(logicalSliceAddr)].headEntry;
+
+	while(bufEntry != DATA_BUF_NONE)
+	{
+		if(dataBufMapPtr->dataBuf[bufEntry].logicalSliceAddr == logicalSliceAddr)
+		{
+			if((dataBufMapPtr->dataBuf[bufEntry].nextEntry != DATA_BUF_NONE) && (dataBufMapPtr->dataBuf[bufEntry].prevEntry != DATA_BUF_NONE))
+			{
+				dataBufMapPtr->dataBuf[dataBufMapPtr->dataBuf[bufEntry].prevEntry].nextEntry = dataBufMapPtr->dataBuf[bufEntry].nextEntry;
+				dataBufMapPtr->dataBuf[dataBufMapPtr->dataBuf[bufEntry].nextEntry].prevEntry = dataBufMapPtr->dataBuf[bufEntry].prevEntry;
+			}
+			else if((dataBufMapPtr->dataBuf[bufEntry].nextEntry == DATA_BUF_NONE) && (dataBufMapPtr->dataBuf[bufEntry].prevEntry != DATA_BUF_NONE))
+			{
+				dataBufMapPtr->dataBuf[dataBufMapPtr->dataBuf[bufEntry].prevEntry].nextEntry = DATA_BUF_NONE;
+				dataBufLruList.tailEntry = dataBufMapPtr->dataBuf[bufEntry].prevEntry;
+			}
+			else if((dataBufMapPtr->dataBuf[bufEntry].nextEntry != DATA_BUF_NONE) && (dataBufMapPtr->dataBuf[bufEntry].prevEntry== DATA_BUF_NONE))
+			{
+				dataBufMapPtr->dataBuf[dataBufMapPtr->dataBuf[bufEntry].nextEntry].prevEntry  = DATA_BUF_NONE;
+				dataBufLruList.headEntry = dataBufMapPtr->dataBuf[bufEntry].nextEntry;
+			}
+			else
+			{
+				dataBufLruList.tailEntry = DATA_BUF_NONE;
+				dataBufLruList.headEntry = DATA_BUF_NONE;
+			}
+
+			if(dataBufLruList.headEntry != DATA_BUF_NONE)
+			{
+				dataBufMapPtr->dataBuf[bufEntry].prevEntry = DATA_BUF_NONE;
+				dataBufMapPtr->dataBuf[bufEntry].nextEntry = dataBufLruList.headEntry;
+				dataBufMapPtr->dataBuf[dataBufLruList.headEntry].prevEntry = bufEntry;
+				dataBufLruList.headEntry = bufEntry;
+			}
+			else
+			{
+				dataBufMapPtr->dataBuf[bufEntry].prevEntry = DATA_BUF_NONE;
+				dataBufMapPtr->dataBuf[bufEntry].nextEntry = DATA_BUF_NONE;
+				dataBufLruList.headEntry = bufEntry;
+				dataBufLruList.tailEntry = bufEntry;
+			}
+
+			return bufEntry;
+		}
+		else
+			bufEntry = dataBufMapPtr->dataBuf[bufEntry].hashNextEntry;
+	}
+
+	return DATA_BUF_FAIL;
+}
+
+unsigned int CheckDataBufHitbyLSA(unsigned int logicalSliceAddr)
+{
+	unsigned int bufEntry;
+
 	bufEntry = dataBufHashTablePtr->dataBufHash[FindDataBufHashTableEntry(logicalSliceAddr)].headEntry;
 
 	while(bufEntry != DATA_BUF_NONE)

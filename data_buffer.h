@@ -61,7 +61,11 @@
 
 
 typedef struct _DATA_BUF_ENTRY {
-	unsigned int logicalSliceAddr;
+	unsigned int logicalSliceAddr : 28;
+	unsigned int blk0 : 1;
+	unsigned int blk1 : 1;
+	unsigned int blk2 : 1;
+	unsigned int blk3 : 1;
 	unsigned int prevEntry : 16;
 	unsigned int nextEntry : 16;
 	unsigned int blockingReqTail : 16;
@@ -102,6 +106,7 @@ typedef struct _TEMPORARY_DATA_BUF_MAP{
 
 void InitDataBuf();
 unsigned int CheckDataBufHit(unsigned int reqSlotTag);
+unsigned int CheckDataBufHitbyLSA(unsigned int logicalSliceAddr);
 unsigned int AllocateDataBuf();
 void UpdateDataBufEntryInfoBlockingReq(unsigned int bufEntry, unsigned int reqSlotTag);
 

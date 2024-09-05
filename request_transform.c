@@ -75,6 +75,24 @@ void InitDependencyTable()
 	}
 }
 
+void ReqTransNvmeToSliceForDSM(unsigned int cmdSlotTag, unsigned int nr)
+{
+	unsigned int reqSlotTag, reqCode;
+	reqSlotTag = GetFromFreeReqQ();
+
+	reqCode = REQ_CODE_DSM;
+
+	reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_SLICE;
+	reqPoolPtr->reqPool[reqSlotTag].reqCode = reqCode;
+	reqPoolPtr->reqPool[reqSlotTag].nvmeCmdSlotTag = cmdSlotTag;
+	reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = LSA_DSM;
+	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.startIndex = 0;
+	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = 0;
+	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = 1;
+
+	PutToSliceReqQ(reqSlotTag);
+}
+
 void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigned int nlb, unsigned int cmdCode)
 {
 	unsigned int reqSlotTag, requestedNvmeBlock, tempNumOfNvmeBlock, transCounter, tempLsa, loop, nvmeBlockOffset, nvmeDmaStartIndex, reqCode;
@@ -109,6 +127,66 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
 
+	if (nvmeBlockOffset == 0)
+	{
+		if (nlb == 1)
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+		}
+		else if (nlb == 2)
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+		}
+		else if (nlb == 3)
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+		}
+		else
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk3 = 1;
+		}
+	}
+	else if (nvmeBlockOffset == 1)
+	{
+		if (nlb == 1)
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+		}
+		else if (nlb == 2)
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+		}
+		else
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk3 = 1;
+		}
+	}
+	else if (nvmeBlockOffset == 2)
+	{
+		if (nlb == 1)
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+		}
+		else
+		{
+			reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+			reqPoolPtr->reqPool[reqSlotTag].blk3 = 1;
+		}
+	}
+	else
+	{
+		reqPoolPtr->reqPool[reqSlotTag].blk3 = 1;
+	}
+
 	PutToSliceReqQ(reqSlotTag);
 
 	tempLsa++;
@@ -130,6 +208,10 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 		reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.startIndex = nvmeDmaStartIndex;
 		reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 		reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
+		reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk3 = 1;
 
 		PutToSliceReqQ(reqSlotTag);
 
@@ -154,6 +236,29 @@ void ReqTransNvmeToSlice(unsigned int cmdSlotTag, unsigned int startLba, unsigne
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = nvmeBlockOffset;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = tempNumOfNvmeBlock;
 
+	if (tempNumOfNvmeBlock == 1)
+	{
+		reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+	}
+	else if (tempNumOfNvmeBlock == 2)
+	{
+		reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+	}
+	else if (tempNumOfNvmeBlock == 3)
+	{
+		reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+	}
+	else
+	{
+		reqPoolPtr->reqPool[reqSlotTag].blk0 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk1 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk2 = 1;
+		reqPoolPtr->reqPool[reqSlotTag].blk3 = 1;
+	}
+
 	PutToSliceReqQ(reqSlotTag);
 }
 
@@ -167,7 +272,7 @@ void EvictDataBufEntry(unsigned int originReqSlotTag)
 	if(dataBufMapPtr->dataBuf[dataBufEntry].dirty == DATA_BUF_DIRTY)
 	{
 		reqSlotTag = GetFromFreeReqQ();
-		virtualSliceAddr =  AddrTransWrite(dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr);
+		virtualSliceAddr =  AddrTransWrite(dataBufEntry);
 
 		reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_NAND;
 		reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_WRITE;
@@ -226,6 +331,8 @@ void ReqTransSliceToLowLevel()
 	while(sliceReqQ.headReq != REQ_SLOT_TAG_NONE)
 	{
 		reqSlotTag = GetFromSliceReqQ();
+		if(reqSlotTag == REQ_CODE_DSM)
+			xil_printf("get dsm cmd\r\n");
 		if(reqSlotTag == REQ_SLOT_TAG_FAIL)
 			return ;
 
@@ -247,6 +354,8 @@ void ReqTransSliceToLowLevel()
 
 			//update meta-data of the allocated data buffer entry
 			dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr = reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr;
+			if (reqSlotTag == REQ_CODE_DSM)
+				xil_printf("logicalSliceAddr: %d\r\n",dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr);
 			PutToDataBufHashList(dataBufEntry);
 
 			if(reqPoolPtr->reqPool[reqSlotTag].reqCode  == REQ_CODE_READ)
@@ -260,10 +369,16 @@ void ReqTransSliceToLowLevel()
 		if(reqPoolPtr->reqPool[reqSlotTag].reqCode  == REQ_CODE_WRITE)
 		{
 			dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_DIRTY;
+			dataBufMapPtr->dataBuf[dataBufEntry].blk0 = reqPoolPtr->reqPool[reqSlotTag].blk0;
+			dataBufMapPtr->dataBuf[dataBufEntry].blk1 = reqPoolPtr->reqPool[reqSlotTag].blk1;
+			dataBufMapPtr->dataBuf[dataBufEntry].blk2 = reqPoolPtr->reqPool[reqSlotTag].blk2;
+			dataBufMapPtr->dataBuf[dataBufEntry].blk3 = reqPoolPtr->reqPool[reqSlotTag].blk3;
 			reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_RxDMA;
 		}
 		else if(reqPoolPtr->reqPool[reqSlotTag].reqCode  == REQ_CODE_READ)
 			reqPoolPtr->reqPool[reqSlotTag].reqCode = REQ_CODE_TxDMA;
+		else if(reqPoolPtr->reqPool[reqSlotTag].reqCode  == REQ_CODE_DSM)
+			dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_CLEAN;
 		else
 			assert(!"[WARNING] Not supported reqCode. [WARNING]");
 
@@ -410,8 +525,10 @@ void SelectLowLevelReqQ(unsigned int reqSlotTag)
 	bufDepCheckReport = CheckBufDep(reqSlotTag);
 	if(bufDepCheckReport == BUF_DEPENDENCY_REPORT_PASS)
 	{
-		if(reqPoolPtr->reqPool[reqSlotTag].reqType  == REQ_TYPE_NVME_DMA)
+		if((reqPoolPtr->reqPool[reqSlotTag].reqType  == REQ_TYPE_NVME_DMA))
 		{
+			if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
+				xil_printf("Issue DSM\r\n");
 			IssueNvmeDmaReq(reqSlotTag);
 			PutToNvmeDmaReqQ(reqSlotTag);
 		}
@@ -580,10 +697,14 @@ void IssueNvmeDmaReq(unsigned int reqSlotTag)
 	devAddr = GenerateDataBufAddr(reqSlotTag);
 	numOfNvmeBlock = 0;
 
-	if(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_RxDMA)
+	if((reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_RxDMA)||(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM))
 	{
 		while(numOfNvmeBlock < reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock)
 		{
+			if(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
+			{
+				xil_printf("dsm rx dma start\r\n");
+			}
 			set_auto_rx_dma(reqPoolPtr->reqPool[reqSlotTag].nvmeCmdSlotTag, dmaIndex, devAddr, NVME_COMMAND_AUTO_COMPLETION_ON);
 
 			numOfNvmeBlock++;
@@ -610,6 +731,200 @@ void IssueNvmeDmaReq(unsigned int reqSlotTag)
 		assert(!"[WARNING] Not supported reqCode [WARNING]");
 }
 
+void TRIM (unsigned int lba, unsigned int blk0, unsigned int blk1, unsigned int blk2, unsigned int blk3)
+{
+	unsigned int lsa, bufEntry;
+	lsa = lba/4;
+	xil_printf("LSA %d will be deleted\r\n",lsa);
+	bufEntry = CheckDataBufHitbyLSA(lsa);
+	if (bufEntry != DATA_BUF_FAIL)
+	{
+        if (blk0 == 0)
+        {
+            dataBufMapPtr->dataBuf[bufEntry].blk0 = 0;
+        }
+        if (blk1 == 0)
+        {
+            dataBufMapPtr->dataBuf[bufEntry].blk1 = 0;
+        }
+        if (blk2 == 0)
+        {
+            dataBufMapPtr->dataBuf[bufEntry].blk2 = 0;
+        }
+        if (blk3 == 0)
+        {
+            dataBufMapPtr->dataBuf[bufEntry].blk3 = 0;
+        }
+        if ((dataBufMapPtr->dataBuf[bufEntry].blk0 == 0) &&
+            (dataBufMapPtr->dataBuf[bufEntry].blk1 == 0) &&
+            (dataBufMapPtr->dataBuf[bufEntry].blk2 == 0) &&
+            (dataBufMapPtr->dataBuf[bufEntry].blk3 == 0))
+        {
+        	//xil_printf("This LSA will be Cleaned LSA: %d!!\r\n", dataBufMapPtr->dataBuf[bufEntry].logicalSliceAddr);
+            unsigned int prevBufEntry, nextBufEntry;
+            prevBufEntry = dataBufMapPtr->dataBuf[bufEntry].prevEntry;
+            nextBufEntry = dataBufMapPtr->dataBuf[bufEntry].nextEntry;
+
+            if (prevBufEntry != DATA_BUF_NONE && nextBufEntry != DATA_BUF_NONE) {
+                dataBufMapPtr->dataBuf[prevBufEntry].nextEntry = nextBufEntry;
+                dataBufMapPtr->dataBuf[nextBufEntry].prevEntry = prevBufEntry;
+                nextBufEntry = DATA_BUF_NONE;
+                prevBufEntry = dataBufLruList.tailEntry;
+                dataBufMapPtr->dataBuf[dataBufLruList.tailEntry].nextEntry = bufEntry;
+                dataBufLruList.tailEntry = bufEntry;
+            } else if (prevBufEntry != DATA_BUF_NONE && nextBufEntry == DATA_BUF_NONE) {
+                dataBufLruList.tailEntry = bufEntry;
+            } else if (prevBufEntry == DATA_BUF_NONE && nextBufEntry != DATA_BUF_NONE) {
+                dataBufMapPtr->dataBuf[nextBufEntry].prevEntry = DATA_BUF_NONE;
+                dataBufLruList.headEntry = nextBufEntry;
+                prevBufEntry = dataBufLruList.tailEntry;
+                dataBufMapPtr->dataBuf[dataBufLruList.tailEntry].nextEntry = bufEntry;
+                dataBufLruList.tailEntry = bufEntry;
+            } else {
+                prevBufEntry = DATA_BUF_NONE;
+                nextBufEntry = DATA_BUF_NONE;
+                dataBufLruList.headEntry = bufEntry;
+                dataBufLruList.tailEntry = bufEntry;
+            }
+            SelectiveGetFromDataBufHashList(bufEntry);
+            dataBufMapPtr->dataBuf[bufEntry].blockingReqTail = REQ_SLOT_TAG_NONE;
+            dataBufMapPtr->dataBuf[bufEntry].dirty = DATA_BUF_CLEAN;
+            dataBufMapPtr->dataBuf[bufEntry].reserved0 = 0;
+        }
+	}
+	unsigned int virtualSliceAddr = logicalSliceMapPtr->logicalSlice[lsa].virtualSliceAddr;
+	if (virtualSliceAddr != VSA_NONE) {
+		if (blk0 == 0) {
+			logicalSliceMapPtr->logicalSlice[lsa].blk0 = 0;
+		}
+		if (blk1 == 0) {
+			logicalSliceMapPtr->logicalSlice[lsa].blk1 = 0;
+		}
+		if (blk2 == 0) {
+			logicalSliceMapPtr->logicalSlice[lsa].blk2 = 0;
+		}
+		if (blk3 == 0) {
+			logicalSliceMapPtr->logicalSlice[lsa].blk3 = 0;
+		}
+		if ((logicalSliceMapPtr->logicalSlice[lsa].blk0 == 0) &&
+			(logicalSliceMapPtr->logicalSlice[lsa].blk1 == 0) &&
+			(logicalSliceMapPtr->logicalSlice[lsa].blk2 == 0) &&
+	        (logicalSliceMapPtr->logicalSlice[lsa].blk3 == 0))
+		{
+			InvalidateOldVsa(lsa);
+		}
+	}
+}
+
+void PerformDeallocation(unsigned int reqSlotTag)
+{
+	int nlb, slba, tempNlb, tempSlba, blk0, blk1, blk2, blk3;
+	unsigned int *devAddr = (unsigned int*)GenerateDataBufAddr(reqSlotTag);
+
+	for (int i=0; i<=nr; i++)
+	{
+		blk0 = 1;
+		blk1 = 1;
+		blk2 = 1;
+		blk3 = 1;
+
+		nlb = *(devAddr + 1);
+		slba = *(devAddr + 2);
+		xil_printf("nlb: %d, slba: %d\r\n", nlb, slba);
+		//do trim
+		if ((slba % 4) == 0)
+		{
+			if(nlb == 1)
+				blk0 = 0;
+			else if (nlb == 2)
+			{
+				blk0 = 0;
+				blk1 = 0;
+			}
+			else if (nlb == 3)
+			{
+				blk0 = 0;
+				blk1 = 0;
+				blk2 = 0;
+			}
+			else
+			{
+				blk0 = 0;
+				blk1 = 0;
+				blk2 = 0;
+				blk3 = 0;
+			}
+		}
+		else if ((slba % 4) == 1)
+		{
+			if(nlb == 1)
+				blk1 = 0;
+			else if (nlb == 2)
+			{
+				blk1 = 0;
+				blk2 = 0;
+			}
+			else
+			{
+				blk1 = 0;
+				blk2 = 0;
+				blk3 = 0;
+			}
+		}
+		else if ((slba % 4) == 2)
+		{
+			if(nlb == 1)
+				blk2 = 0;
+			else
+			{
+				blk2 = 0;
+				blk3 = 0;
+			}
+		}
+		else
+		{
+			blk3 = 0;
+		}
+
+		TRIM(slba, blk0, blk1, blk2, blk3);
+
+		tempSlba = slba + (4 - (slba % 4));
+		tempNlb = nlb - (4 - (slba % 4));
+		nlb = tempNlb;
+		slba = tempSlba;
+		while(nlb > 4)
+		{
+			TRIM(slba, blk0, blk1, blk2, blk3);
+			slba = slba + 4;
+			nlb = nlb - 4;
+		}
+
+		blk0 = 1;
+		blk1 = 1;
+		blk2 = 1;
+		blk3 = 1;
+
+		if (nlb == 1)
+		{
+			blk0 = 0;
+		}
+		else if (nlb == 2)
+		{
+			blk0 = 0;
+			blk1 = 0;
+		}
+		else
+		{
+			blk0 = 0;
+			blk1 = 0;
+			blk2 = 0;
+		}
+		TRIM(slba, blk0, blk1, blk2, blk3);
+
+		devAddr += 4;
+	}
+}
+
 void CheckDoneNvmeDmaReq()
 {
 	unsigned int reqSlotTag, prevReq;
@@ -623,7 +938,7 @@ void CheckDoneNvmeDmaReq()
 	{
 		prevReq = reqPoolPtr->reqPool[reqSlotTag].prevReq;
 
-		if(reqPoolPtr->reqPool[reqSlotTag].reqCode  == REQ_CODE_RxDMA)
+		if(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_RxDMA)
 		{
 			if(!rxDone)
 				rxDone = check_auto_rx_dma_partial_done(reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.reqTail , reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.overFlowCnt);
@@ -639,7 +954,10 @@ void CheckDoneNvmeDmaReq()
 			if(txDone)
 				SelectiveGetFromNvmeDmaReqQ(reqSlotTag);
 		}
-
+		if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
+		{	//if DMA for trim is done, do trim
+			PerformDeallocation(reqSlotTag);
+		}
 		reqSlotTag = prevReq;
 	}
 }

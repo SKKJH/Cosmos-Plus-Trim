@@ -50,11 +50,13 @@
 #include "ftl_config.h"
 #include "nvme/nvme.h"
 
-#define LSA_NONE	0xffffffff
-#define LSA_FAIL	0xffffffff
+#define LSA_NONE	0xfffffff
+#define LSA_FAIL	0xfffffff
+#define LSA_DSM		0xffffff0
 
-#define VSA_NONE	0xffffffff
-#define VSA_FAIL	0xffffffff
+#define VSA_NONE	0xfffffff
+#define VSA_FAIL	0xfffffff
+#define VSA_DSM		0xffffff0
 
 #define PAGE_NONE		0xffff
 
@@ -110,7 +112,11 @@
 
 //for logical to virtual translation
 typedef struct _LOGICAL_SLICE_ENTRY {
-	unsigned int virtualSliceAddr;
+	unsigned int virtualSliceAddr : 28;
+	unsigned int blk0 : 1;
+	unsigned int blk1 : 1;
+	unsigned int blk2 : 1;
+	unsigned int blk3 : 1;
 } LOGICAL_SLICE_ENTRY, *P_LOGICAL_SLICE_ENTRY;
 
 typedef struct _LOGICAL_SLICE_MAP {
@@ -120,7 +126,11 @@ typedef struct _LOGICAL_SLICE_MAP {
 
 //for virtual to logical  translation
 typedef struct _VIRTUAL_SLICE_ENTRY {
-	unsigned int logicalSliceAddr;
+	unsigned int logicalSliceAddr : 28;
+	unsigned int blk0 : 1;
+	unsigned int blk1 : 1;
+	unsigned int blk2 : 1;
+	unsigned int blk3 : 1;
 } VIRTUAL_SLICE_ENTRY, *P_VIRTUAL_SLICE_ENTRY;
 
 typedef struct _VIRTUAL_SLICE_MAP {

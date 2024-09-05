@@ -92,6 +92,8 @@
 
 #pragma pack(push, 1)
 
+unsigned int nr;
+
 typedef struct _DEV_IRQ_REG
 {
 	union {

@@ -113,19 +113,35 @@ void handle_nvme_io_write(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
 	ReqTransNvmeToSlice(cmdSlotTag, startLba[0], nlb, IO_NVM_WRITE);
 }
 
+void handle_nvme_io_dataset_management(unsigned int cmdSlotTag, NVME_IO_COMMAND *nvmeIOCmd)
+{
+	unsigned int ad;
+	IO_DATASET_MANAGEMENT_COMMAND_DW10 dsmInfo10;
+	IO_DATASET_MANAGEMENT_COMMAND_DW11 dsmInfo11;
+
+	dsmInfo10.dword = nvmeIOCmd->dword10;
+	dsmInfo11.dword = nvmeIOCmd->dword11;
+
+	nr = dsmInfo10.NR;
+	xil_printf("num of range: %d\r\n", nr);
+	ad = dsmInfo11.AD;
+
+	if (ad==1)
+	{
+		ReqTransNvmeToSliceForDSM(cmdSlotTag, nr);
+	}
+	else
+	{
+		xil_printf("No Discard\r\n");
+	}
+}
+
 void handle_nvme_io_cmd(NVME_COMMAND *nvmeCmd)
 {
 	NVME_IO_COMMAND *nvmeIOCmd;
 	NVME_COMPLETION nvmeCPL;
 	unsigned int opc;
 	nvmeIOCmd = (NVME_IO_COMMAND*)nvmeCmd->cmdDword;
-	/*		xil_printf("OPC = 0x%X\r\n", nvmeIOCmd->OPC);
-			xil_printf("PRP1[63:32] = 0x%X, PRP1[31:0] = 0x%X\r\n", nvmeIOCmd->PRP1[1], nvmeIOCmd->PRP1[0]);
-			xil_printf("PRP2[63:32] = 0x%X, PRP2[31:0] = 0x%X\r\n", nvmeIOCmd->PRP2[1], nvmeIOCmd->PRP2[0]);
-			xil_printf("dword10 = 0x%X\r\n", nvmeIOCmd->dword10);
-			xil_printf("dword11 = 0x%X\r\n", nvmeIOCmd->dword11);
-			xil_printf("dword12 = 0x%X\r\n", nvmeIOCmd->dword12);*/
-
 
 	opc = (unsigned int)nvmeIOCmd->OPC;
 
@@ -149,6 +165,12 @@ void handle_nvme_io_cmd(NVME_COMMAND *nvmeCmd)
 		{
 //			xil_printf("IO Read Command\r\n");
 			handle_nvme_io_read(nvmeCmd->cmdSlotTag, nvmeIOCmd);
+			break;
+		}
+		case IO_NVM_DATASET_MANAGEMENT:
+		{
+//			xil_printf("IO Dataset Management Command\r\n");
+			handle_nvme_io_dataset_management(nvmeCmd->cmdSlotTag, nvmeIOCmd);
 			break;
 		}
 		default:
