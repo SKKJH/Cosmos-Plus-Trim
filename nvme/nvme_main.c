@@ -74,6 +74,7 @@ void nvme_main()
 {
 	unsigned int exeLlr;
 	unsigned int rstCnt = 0;
+	trim_flag = 0;
 
 	xil_printf("!!! Wait until FTL reset complete !!! \r\n");
 

@@ -848,6 +848,7 @@ typedef struct _NVME_STATUS
 	NVME_IO_CQ_STATUS ioCqInfo[MAX_NUM_OF_IO_CQ];
 } NVME_CONTEXT;
 
-
+unsigned int trim_flag;
+unsigned int trim_LSA;
 
 #endif	//__NVME_H_

@@ -85,7 +85,17 @@ void ReqTransNvmeToSliceForDSM(unsigned int cmdSlotTag, unsigned int nr)
 	reqPoolPtr->reqPool[reqSlotTag].reqType = REQ_TYPE_SLICE;
 	reqPoolPtr->reqPool[reqSlotTag].reqCode = reqCode;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeCmdSlotTag = cmdSlotTag;
-	reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = LSA_DSM;
+	if (trim_flag == 0)
+	{
+		reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = LSA_DSM;
+		trim_LSA = LSA_DSM - 1;
+		trim_flag = 1;
+	}
+	else
+	{
+		reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = trim_LSA;
+		trim_LSA = LSA_DSM - 1;
+	}
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.startIndex = 0;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = 0;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = 1;
@@ -271,6 +281,7 @@ void EvictDataBufEntry(unsigned int originReqSlotTag)
 	dataBufEntry = reqPoolPtr->reqPool[originReqSlotTag].dataBufInfo.entry;
 	if(dataBufMapPtr->dataBuf[dataBufEntry].dirty == DATA_BUF_DIRTY)
 	{
+		CheckDoneNvmeDmaReq(); //Is it Ok?
 		reqSlotTag = GetFromFreeReqQ();
 		virtualSliceAddr =  AddrTransWrite(dataBufEntry);
 
@@ -960,6 +971,7 @@ void CheckDoneNvmeDmaReq()
 		}
 		reqSlotTag = prevReq;
 	}
+	trim_flag = 0;
 }
 
 
