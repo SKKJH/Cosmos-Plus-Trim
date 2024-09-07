@@ -122,8 +122,8 @@ void handle_nvme_io_dataset_management(unsigned int cmdSlotTag, NVME_IO_COMMAND 
 	dsmInfo10.dword = nvmeIOCmd->dword10;
 	dsmInfo11.dword = nvmeIOCmd->dword11;
 
-	nr = dsmInfo10.NR;
-	xil_printf("num of range: %d\r\n", nr);
+	unsigned int nr = dsmInfo10.NR;
+//	xil_printf("num of range: %d\r\n", nr);
 	ad = dsmInfo11.AD;
 
 	if (ad==1)

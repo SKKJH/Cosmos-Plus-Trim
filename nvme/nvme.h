@@ -850,5 +850,7 @@ typedef struct _NVME_STATUS
 
 unsigned int trim_flag;
 unsigned int trim_LSA;
+unsigned int gc_cnt;
+unsigned int wr_cnt;
 
 #endif	//__NVME_H_

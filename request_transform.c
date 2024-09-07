@@ -89,16 +89,18 @@ void ReqTransNvmeToSliceForDSM(unsigned int cmdSlotTag, unsigned int nr)
 	{
 		reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = LSA_DSM;
 		trim_LSA = LSA_DSM - 1;
-		trim_flag = 1;
+		trim_flag++;
 	}
 	else
 	{
 		reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr = trim_LSA;
 		trim_LSA = LSA_DSM - 1;
+		trim_flag++;
 	}
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.startIndex = 0;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nvmeBlockOffset = 0;
 	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock = 1;
+	reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nr = nr;
 
 	PutToSliceReqQ(reqSlotTag);
 }
@@ -342,8 +344,6 @@ void ReqTransSliceToLowLevel()
 	while(sliceReqQ.headReq != REQ_SLOT_TAG_NONE)
 	{
 		reqSlotTag = GetFromSliceReqQ();
-		if(reqSlotTag == REQ_CODE_DSM)
-			xil_printf("get dsm cmd\r\n");
 		if(reqSlotTag == REQ_SLOT_TAG_FAIL)
 			return ;
 
@@ -365,8 +365,6 @@ void ReqTransSliceToLowLevel()
 
 			//update meta-data of the allocated data buffer entry
 			dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr = reqPoolPtr->reqPool[reqSlotTag].logicalSliceAddr;
-			if (reqSlotTag == REQ_CODE_DSM)
-				xil_printf("logicalSliceAddr: %d\r\n",dataBufMapPtr->dataBuf[dataBufEntry].logicalSliceAddr);
 			PutToDataBufHashList(dataBufEntry);
 
 			if(reqPoolPtr->reqPool[reqSlotTag].reqCode  == REQ_CODE_READ)
@@ -379,6 +377,7 @@ void ReqTransSliceToLowLevel()
 		//transform this slice request to nvme request
 		if(reqPoolPtr->reqPool[reqSlotTag].reqCode  == REQ_CODE_WRITE)
 		{
+			wr_cnt++;
 			dataBufMapPtr->dataBuf[dataBufEntry].dirty = DATA_BUF_DIRTY;
 			dataBufMapPtr->dataBuf[dataBufEntry].blk0 = reqPoolPtr->reqPool[reqSlotTag].blk0;
 			dataBufMapPtr->dataBuf[dataBufEntry].blk1 = reqPoolPtr->reqPool[reqSlotTag].blk1;
@@ -538,8 +537,6 @@ void SelectLowLevelReqQ(unsigned int reqSlotTag)
 	{
 		if((reqPoolPtr->reqPool[reqSlotTag].reqType  == REQ_TYPE_NVME_DMA))
 		{
-			if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
-				xil_printf("Issue DSM\r\n");
 			IssueNvmeDmaReq(reqSlotTag);
 			PutToNvmeDmaReqQ(reqSlotTag);
 		}
@@ -712,10 +709,6 @@ void IssueNvmeDmaReq(unsigned int reqSlotTag)
 	{
 		while(numOfNvmeBlock < reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.numOfNvmeBlock)
 		{
-			if(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
-			{
-				xil_printf("dsm rx dma start\r\n");
-			}
 			set_auto_rx_dma(reqPoolPtr->reqPool[reqSlotTag].nvmeCmdSlotTag, dmaIndex, devAddr, NVME_COMMAND_AUTO_COMPLETION_ON);
 
 			numOfNvmeBlock++;
@@ -746,7 +739,7 @@ void TRIM (unsigned int lba, unsigned int blk0, unsigned int blk1, unsigned int 
 {
 	unsigned int lsa, bufEntry;
 	lsa = lba/4;
-	xil_printf("LSA %d will be deleted\r\n",lsa);
+	xil_printf("LSA %d will be checked\r\n",lsa);
 	bufEntry = CheckDataBufHitbyLSA(lsa);
 	if (bufEntry != DATA_BUF_FAIL)
 	{
@@ -771,7 +764,7 @@ void TRIM (unsigned int lba, unsigned int blk0, unsigned int blk1, unsigned int 
             (dataBufMapPtr->dataBuf[bufEntry].blk2 == 0) &&
             (dataBufMapPtr->dataBuf[bufEntry].blk3 == 0))
         {
-        	//xil_printf("This LSA will be Cleaned LSA: %d!!\r\n", dataBufMapPtr->dataBuf[bufEntry].logicalSliceAddr);
+//        	xil_printf("This LSA will be Cleaned in WB: %d!!\r\n", lsa);
             unsigned int prevBufEntry, nextBufEntry;
             prevBufEntry = dataBufMapPtr->dataBuf[bufEntry].prevEntry;
             nextBufEntry = dataBufMapPtr->dataBuf[bufEntry].nextEntry;
@@ -822,6 +815,7 @@ void TRIM (unsigned int lba, unsigned int blk0, unsigned int blk1, unsigned int 
 			(logicalSliceMapPtr->logicalSlice[lsa].blk2 == 0) &&
 	        (logicalSliceMapPtr->logicalSlice[lsa].blk3 == 0))
 		{
+//        	xil_printf("This LSA will be Cleaned in L2P: %d!!\r\n", lsa);
 			InvalidateOldVsa(lsa);
 		}
 	}
@@ -831,6 +825,7 @@ void PerformDeallocation(unsigned int reqSlotTag)
 {
 	int nlb, slba, tempNlb, tempSlba, blk0, blk1, blk2, blk3;
 	unsigned int *devAddr = (unsigned int*)GenerateDataBufAddr(reqSlotTag);
+	unsigned int nr = reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.nr;
 
 	for (int i=0; i<=nr; i++)
 	{
@@ -841,7 +836,11 @@ void PerformDeallocation(unsigned int reqSlotTag)
 
 		nlb = *(devAddr + 1);
 		slba = *(devAddr + 2);
-		xil_printf("nlb: %d, slba: %d\r\n", nlb, slba);
+//		xil_printf("nr : %d, nlb: %d, slba: %d\r\n", nr, nlb, slba);
+		if (SLICES_PER_SSD > (slba/4) || (slba < 0))
+		{
+			break;
+		}
 		//do trim
 		if ((slba % 4) == 0)
 		{
@@ -968,10 +967,10 @@ void CheckDoneNvmeDmaReq()
 		if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
 		{	//if DMA for trim is done, do trim
 			PerformDeallocation(reqSlotTag);
+			trim_flag--;
 		}
 		reqSlotTag = prevReq;
 	}
-	trim_flag = 0;
 }
 
 
