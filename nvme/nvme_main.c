@@ -77,6 +77,7 @@ void nvme_main()
 	trim_flag = 0;
 	gc_cnt = 0;
 	wr_cnt = 0;
+	trim_cnt = 0;
 
 	xil_printf("!!! Wait until FTL reset complete !!! \r\n");
 
@@ -144,6 +145,7 @@ void nvme_main()
 				UpdateBadBlockTableForGrownBadBlock(RESERVED_DATA_BUFFER_BASE_ADDR);
 
 				xil_printf("\r\nNVMe shutdown!!!\r\n");
+				xil_printf("trim cnt %d\r\n",trim_cnt);
 				xil_printf("wr_cnt: %d, gc_cnt: %d\r\n", wr_cnt, gc_cnt);
 			}
 		}

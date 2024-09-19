@@ -739,7 +739,9 @@ void TRIM (unsigned int lba, unsigned int blk0, unsigned int blk1, unsigned int 
 {
 	unsigned int lsa, bufEntry;
 	lsa = lba/4;
-	xil_printf("LSA %d will be checked\r\n",lsa);
+	trim_cnt++;
+//	xil_printf("LSA %d will be checked and sleep start\r\n",lsa);
+//	xil_printf("trim cnt %d\r\n",trim_cnt);
 	bufEntry = CheckDataBufHitbyLSA(lsa);
 	if (bufEntry != DATA_BUF_FAIL)
 	{
@@ -837,7 +839,8 @@ void PerformDeallocation(unsigned int reqSlotTag)
 		nlb = *(devAddr + 1);
 		slba = *(devAddr + 2);
 //		xil_printf("nr : %d, nlb: %d, slba: %d\r\n", nr, nlb, slba);
-		if (SLICES_PER_SSD > (slba/4) || (slba < 0))
+		//if (SLICES_PER_SSD > (slba/4) || (slba < 0))
+		if ( (nlb < 0) || ((SLICES_PER_SSD * 4) < nlb) || ((SLICES_PER_SSD * 4) < slba) || (0 > slba))
 		{
 			break;
 		}
