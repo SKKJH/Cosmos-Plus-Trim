@@ -740,6 +740,7 @@ void TRIM (unsigned int lba, unsigned int blk0, unsigned int blk1, unsigned int 
 	unsigned int lsa, bufEntry;
 	lsa = lba/4;
 	trim_cnt++;
+	trim_total_cnt++;
 //	xil_printf("LSA %d will be checked and sleep start\r\n",lsa);
 //	xil_printf("trim cnt %d\r\n",trim_cnt);
 	bufEntry = CheckDataBufHitbyLSA(lsa);
@@ -842,6 +843,7 @@ void PerformDeallocation(unsigned int reqSlotTag)
 		//if (SLICES_PER_SSD > (slba/4) || (slba < 0))
 		if ( (nlb < 0) || ((SLICES_PER_SSD * 4) < nlb) || ((SLICES_PER_SSD * 4) < slba) || (0 > slba))
 		{
+//			xil_printf("break here\r\n");
 			break;
 		}
 		//do trim
@@ -951,10 +953,16 @@ void CheckDoneNvmeDmaReq()
 	{
 		prevReq = reqPoolPtr->reqPool[reqSlotTag].prevReq;
 
-		if(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_RxDMA)
+		if((reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_RxDMA)||(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM))
 		{
 			if(!rxDone)
+			{
 				rxDone = check_auto_rx_dma_partial_done(reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.reqTail , reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.overFlowCnt);
+				if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
+				{
+					reqSlotTag = nvmeDmaReqQ.tailReq;
+				}
+			}
 
 			if(rxDone)
 				SelectiveGetFromNvmeDmaReqQ(reqSlotTag);
@@ -966,11 +974,6 @@ void CheckDoneNvmeDmaReq()
 
 			if(txDone)
 				SelectiveGetFromNvmeDmaReqQ(reqSlotTag);
-		}
-		if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
-		{	//if DMA for trim is done, do trim
-			PerformDeallocation(reqSlotTag);
-			trim_flag--;
 		}
 		reqSlotTag = prevReq;
 	}

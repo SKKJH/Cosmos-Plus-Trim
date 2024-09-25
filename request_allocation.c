@@ -376,6 +376,12 @@ void SelectiveGetFromNvmeDmaReqQ(unsigned int reqSlotTag)
 	reqPoolPtr->reqPool[reqSlotTag].reqQueueType = REQ_QUEUE_TYPE_NONE;
 	nvmeDmaReqQ.reqCnt--;
 
+	if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
+	{	//if DMA for trim is done, do trim
+		PerformDeallocation(reqSlotTag);
+		trim_flag--;
+	}
+
 	PutToFreeReqQ(reqSlotTag);
 	ReleaseBlockedByBufDepReq(reqSlotTag);
 }

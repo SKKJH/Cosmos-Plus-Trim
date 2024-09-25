@@ -853,5 +853,6 @@ unsigned int trim_LSA;
 unsigned int gc_cnt;
 unsigned int wr_cnt;
 unsigned int trim_cnt;
+unsigned int trim_total_cnt;
 
 #endif	//__NVME_H_
