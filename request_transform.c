@@ -942,16 +942,16 @@ void PerformDeallocation(unsigned int reqSlotTag)
 
 void CheckDoneNvmeDmaReq()
 {
-	unsigned int reqSlotTag, prevReq;
+	unsigned int reqSlotTag, nextReq;
 	unsigned int rxDone, txDone;
 
-	reqSlotTag = nvmeDmaReqQ.tailReq;
+	reqSlotTag = nvmeDmaReqQ.headReq;
 	rxDone = 0;
 	txDone = 0;
 
 	while(reqSlotTag != REQ_SLOT_TAG_NONE)
 	{
-		prevReq = reqPoolPtr->reqPool[reqSlotTag].prevReq;
+		nextReq = reqPoolPtr->reqPool[reqSlotTag].nextReq;
 
 		if((reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_RxDMA)||(reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM))
 		{
@@ -960,7 +960,7 @@ void CheckDoneNvmeDmaReq()
 				rxDone = check_auto_rx_dma_partial_done(reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.reqTail , reqPoolPtr->reqPool[reqSlotTag].nvmeDmaInfo.overFlowCnt);
 				if (reqPoolPtr->reqPool[reqSlotTag].reqCode == REQ_CODE_DSM)
 				{
-					reqSlotTag = nvmeDmaReqQ.tailReq;
+					reqSlotTag = nvmeDmaReqQ.headReq;
 				}
 			}
 
@@ -975,7 +975,7 @@ void CheckDoneNvmeDmaReq()
 			if(txDone)
 				SelectiveGetFromNvmeDmaReqQ(reqSlotTag);
 		}
-		reqSlotTag = prevReq;
+		reqSlotTag = nextReq;
 	}
 }
 
